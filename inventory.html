@@ -309,7 +309,7 @@ if (sessionStorage.getItem('_auth') === '1') {
 // ============ API 配置 ============
 const BASE_URL = 'https://ftjfhvtddpdkzjncsrfc.supabase.co/rest/v1';
 const ANON_KEY = 'sb_publishable_UBNb4FB_wjA90r0JwQgLhA_NbxwBZWm';
-const AUTH_HEADERS = { 'apikey': ANON_KEY, 'Accept-Profile': 'public', 'Content-Profile': 'public' };
+const AUTH_HEADERS = { 'apikey': ANON_KEY, 'Accept-Profile': 'public', 'Content-Profile': 'public', 'x-app-password': 'hechen888' };
 
 async function apiFetch(path, options) {
     options = options || {};
