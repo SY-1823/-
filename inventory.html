@@ -187,7 +187,7 @@ if (sessionStorage.getItem('_auth') === '1') {
         </div>
         <div class="table-wrapper">
             <table>
-                <thead><tr><th>货物名称</th><th>产品编号</th><th>分类</th><th class="text-right">库存数量</th><th class="text-right">成本价</th><th class="text-right">售价</th><th>供应商</th><th class="text-center">状态</th><th class="text-center">操作</th></tr></thead>
+                <thead><tr><th>货物名称</th><th>产品编号</th><th>分类</th><th class="text-right">库存数量</th><th class="text-right">含税价格</th><th class="text-right">成本价</th><th class="text-right">售价</th><th>供应商</th><th class="text-center">状态</th><th class="text-center">操作</th></tr></thead>
                 <tbody id="overviewTableBody"></tbody>
             </table>
             <div class="empty-state" id="overviewEmpty" style="display:none">暂无库存数据</div>
@@ -204,7 +204,7 @@ if (sessionStorage.getItem('_auth') === '1') {
             <div class="form-group" style="max-width:160px;"><label>供应商国家</label><input type="text" id="inSupplierCountry" placeholder="国家（可选）"></div>
         </div>
         <table class="batch-table" id="inboundBatchTable">
-            <thead><tr><th style="width:18%">货物名称</th><th style="width:14%">产品编号</th><th style="width:14%">分类</th><th style="width:10%">数量</th><th style="width:12%">成本单价</th><th style="width:12%">售价</th><th style="width:8%"></th></tr></thead>
+            <thead><tr><th style="width:15%">货物名称</th><th style="width:13%">产品编号</th><th style="width:13%">分类</th><th style="width:9%">数量</th><th style="width:12%">含税价格</th><th style="width:12%">成本单价</th><th style="width:12%">售价</th><th style="width:6%"></th></tr></thead>
             <tbody id="inboundBatchBody"></tbody>
         </table>
         <div style="display:flex;gap:8px;">
@@ -403,7 +403,7 @@ async function loadFromSupabase() {
     try {
         var results = await Promise.all([
             apiFetch('/categories?select=*&order=created_at.asc'),
-            apiFetch('/inventory?select=id,name,category,quantity,supplier,supplier_country,product_code,cost_price,sale_price,updated_at&order=name.asc'),
+            apiFetch('/inventory?select=id,name,category,quantity,supplier,supplier_country,product_code,tax_included_price,cost_price,sale_price,updated_at&order=name.asc'),
             apiFetch('/operation_logs?select=*&order=created_at.desc&limit=500'),
             apiFetch('/customers?select=*&order=name.asc'),
             apiFetch('/suppliers?select=*&order=name.asc')
@@ -411,7 +411,7 @@ async function loadFromSupabase() {
         data.categories = (results[0] || []).map(function(c) { return c.name; });
         data.inventory = {};
         (results[1] || []).forEach(function(item) {
-            data.inventory[item.id] = { id: item.id, name: item.name, category: item.category, quantity: item.quantity, supplier: item.supplier || '', supplier_country: item.supplier_country || '', product_code: item.product_code || '', cost_price: item.cost_price || 0, sale_price: item.sale_price || 0 };
+            data.inventory[item.id] = { id: item.id, name: item.name, category: item.category, quantity: item.quantity, supplier: item.supplier || '', supplier_country: item.supplier_country || '', product_code: item.product_code || '', tax_included_price: item.tax_included_price || 0, cost_price: item.cost_price || 0, sale_price: item.sale_price || 0 };
         });
         var logs = (results[2] || []).slice().reverse();
         data.logs = logs.map(function(l) { return { id: l.id, time: formatTime(l.created_at), item: l.item_name, change: l.quantity_change, action: l.type === 'inbound' ? '入库' : '出库', category: l.category, customer_name: l.customer_name || '', customer_country: l.customer_country || '', supplier_name: l.supplier_name || '', unit_price: l.unit_price || 0, total_price: l.total_price || 0 }; });
@@ -436,7 +436,7 @@ function addInboundRow() {
     var tbody = document.getElementById('inboundBatchBody');
     var cats = '<option value="">请选择分类</option>' + data.categories.map(function(c) { return '<option value="' + escAttr(c) + '">' + escHtml(c) + '</option>'; }).join('');
     var row = document.createElement('tr');
-    row.innerHTML = '<td><input type="text" placeholder="货物名称"></td><td><input type="text" placeholder="产品编号" class="inCode"></td><td><select>' + cats + '</select></td><td><input type="number" min="0" value="1" style="width:100%"></td><td><input type="number" step="0.01" placeholder="成本价" class="inPrice"></td><td><input type="number" step="0.01" placeholder="售价" class="inSale"></td><td><button class="btn btn-xs btn-outline" onclick="this.closest(\'tr\').remove()">×</button></td>';
+    row.innerHTML = '<td><input type="text" placeholder="货物名称"></td><td><input type="text" placeholder="产品编号" class="inCode"></td><td><select>' + cats + '</select></td><td><input type="number" min="0" value="1" style="width:100%"></td><td><input type="number" step="0.01" placeholder="含税价格" class="inTax"></td><td><input type="number" step="0.01" placeholder="成本价" class="inPrice"></td><td><input type="number" step="0.01" placeholder="售价" class="inSale"></td><td><button class="btn btn-xs btn-outline" onclick="this.closest(\'tr\').remove()">×</button></td>';
     tbody.appendChild(row);
 }
 
@@ -451,13 +451,14 @@ function doBatchInbound() {
         var productCode = cells[1].querySelector('input').value.trim();
         var category = cells[2].querySelector('select').value;
         var qty = parseFloat(cells[3].querySelector('input').value);
-        var costPrice = parseFloat(cells[4].querySelector('input').value) || 0;
-        var salePrice = parseFloat(cells[5].querySelector('input').value) || 0;
+        var taxPrice = parseFloat(cells[4].querySelector('input').value) || 0;
+        var costPrice = parseFloat(cells[5].querySelector('input').value) || 0;
+        var salePrice = parseFloat(cells[6].querySelector('input').value) || 0;
         if (!name) { showToast('第' + (i+1) + '行：请输入货物名称', 'error'); return; }
         if (!category) { showToast('第' + (i+1) + '行：请选择分类', 'error'); return; }
         if (isNaN(qty) || qty < 0) { showToast('第' + (i+1) + '行：请输入有效数量', 'error'); return; }
         if (qty % 1 !== 0) { showToast('第' + (i+1) + '行：数量必须是整数', 'error'); return; }
-        items.push({ name: name, product_code: productCode, category: category, quantity: qty, cost_price: costPrice, sale_price: salePrice });
+        items.push({ name: name, product_code: productCode, category: category, quantity: qty, tax_included_price: taxPrice, cost_price: costPrice, sale_price: salePrice });
     }
     if (items.length === 0) { showToast('请至少添加一行入库货物', 'error'); return; }
     doBatchInboundExec(items, supplier, supplierCountry);
@@ -474,11 +475,12 @@ async function doBatchInboundExec(items, supplier, supplierCountry) {
             var key = [it.name, it.product_code || '', it.category, supplier || ''].join('\u0001');
             if (mergeMap[key] != null) {
                 mergedItems[mergeMap[key]].quantity += it.quantity;
-                mergedItems[mergeMap[key]].cost_price = it.cost_price;
-                mergedItems[mergeMap[key]].sale_price = it.sale_price;
+                if (it.tax_included_price > 0) mergedItems[mergeMap[key]].tax_included_price = it.tax_included_price;
+                if (it.cost_price > 0) mergedItems[mergeMap[key]].cost_price = it.cost_price;
+                if (it.sale_price > 0) mergedItems[mergeMap[key]].sale_price = it.sale_price;
             } else {
                 mergeMap[key] = mergedItems.length;
-                mergedItems.push({ name: it.name, product_code: it.product_code, category: it.category, quantity: it.quantity, cost_price: it.cost_price, sale_price: it.sale_price });
+                mergedItems.push({ name: it.name, product_code: it.product_code, category: it.category, quantity: it.quantity, tax_included_price: it.tax_included_price, cost_price: it.cost_price, sale_price: it.sale_price });
             }
         });
         items = mergedItems;
@@ -522,11 +524,12 @@ async function doBatchInboundExec(items, supplier, supplierCountry) {
             var existing = findMatch(it);
             if (existing) {
                 var patchBody = { quantity: existing.quantity + it.quantity, category: it.category, supplier: supplier, supplier_country: supplierCountry, product_code: it.product_code, updated_at: new Date().toISOString() };
+                if (it.tax_included_price > 0) patchBody.tax_included_price = it.tax_included_price;
                 if (it.cost_price > 0) patchBody.cost_price = it.cost_price;
                 if (it.sale_price > 0) patchBody.sale_price = it.sale_price;
                 return apiFetch('/inventory?id=eq.' + existing.id, { method: 'PATCH', body: patchBody });
             } else {
-                return apiFetch('/inventory', { method: 'POST', body: { name: it.name, category: it.category, quantity: it.quantity, supplier: supplier, supplier_country: supplierCountry, product_code: it.product_code, cost_price: it.cost_price, sale_price: it.sale_price }, headers: PREFER_RETURN });
+                return apiFetch('/inventory', { method: 'POST', body: { name: it.name, category: it.category, quantity: it.quantity, supplier: supplier, supplier_country: supplierCountry, product_code: it.product_code, tax_included_price: it.tax_included_price, cost_price: it.cost_price, sale_price: it.sale_price }, headers: PREFER_RETURN });
             }
         });
         var upsertResults = await Promise.all(upserts);
@@ -541,7 +544,7 @@ async function doBatchInboundExec(items, supplier, supplierCountry) {
                 var r = upsertResults[idx];
                 newId = (Array.isArray(r) ? r[0] : r) ? (Array.isArray(r) ? r[0].id : r.id) : null;
             }
-            return { id: existing ? existing.id : newId, name: it.name, oldQty: existing ? existing.quantity : 0, oldCategory: existing ? existing.category : null, oldSupplier: existing ? existing.supplier : null, oldSupplierCountry: existing ? existing.supplier_country : null, oldProductCode: existing ? existing.product_code : null, oldCost: existing ? existing.cost_price : null, oldSalePrice: existing ? existing.sale_price : null, wasNew: !existing };
+            return { id: existing ? existing.id : newId, name: it.name, oldQty: existing ? existing.quantity : 0, oldCategory: existing ? existing.category : null, oldSupplier: existing ? existing.supplier : null, oldSupplierCountry: existing ? existing.supplier_country : null, oldProductCode: existing ? existing.product_code : null, oldTax: existing ? existing.tax_included_price : null, oldCost: existing ? existing.cost_price : null, oldSalePrice: existing ? existing.sale_price : null, wasNew: !existing };
         });
 
         // 3. 并行：写日志 + 自动保存供应商
@@ -571,7 +574,7 @@ async function doBatchInboundExec(items, supplier, supplierCountry) {
                 if (s.wasNew) {
                     await apiFetch('/inventory?id=eq.' + s.id, { method: 'DELETE' });
                 } else {
-                    await apiFetch('/inventory?id=eq.' + s.id, { method: 'PATCH', body: { quantity: s.oldQty, category: s.oldCategory, supplier: s.oldSupplier, supplier_country: s.oldSupplierCountry, product_code: s.oldProductCode, cost_price: s.oldCost, sale_price: s.oldSalePrice, updated_at: new Date().toISOString() } });
+                    await apiFetch('/inventory?id=eq.' + s.id, { method: 'PATCH', body: { quantity: s.oldQty, category: s.oldCategory, supplier: s.oldSupplier, supplier_country: s.oldSupplierCountry, product_code: s.oldProductCode, tax_included_price: s.oldTax, cost_price: s.oldCost, sale_price: s.oldSalePrice, updated_at: new Date().toISOString() } });
                 }
             }
             for (var j = 0; j < logIds.length; j++) { await apiFetch('/operation_logs?id=eq.' + logIds[j], { method: 'DELETE' }); }
@@ -701,6 +704,7 @@ function renderRow(id) {
         '<td style="font-size:12px;color:var(--text-secondary);">' + escHtml(info.product_code || '-') + '</td>' +
         '<td><span class="badge ' + cls + '">' + escHtml(info.category) + '</span></td>' +
         '<td class="text-right"><strong>' + qty + '</strong></td>' +
+        '<td class="text-right">' + (info.tax_included_price ? '¥' + Number(info.tax_included_price).toFixed(2) : '-') + '</td>' +
         '<td class="text-right">' + (info.cost_price ? '¥' + Number(info.cost_price).toFixed(2) : '-') + '</td>' +
         '<td class="text-right">' + (info.sale_price ? '¥' + Number(info.sale_price).toFixed(2) : '-') + '</td>' +
         '<td>' + escHtml(info.supplier) + (info.supplier_country ? ' (' + escHtml(info.supplier_country) + ')' : '') + '</td>' +
@@ -741,6 +745,7 @@ function startEdit(id) {
         '<td><input type="text" value="' + escAttr(item.product_code || '') + '" placeholder="编号" style="width:80px;height:32px;padding:0 6px;font-size:13px;" id="editCode_' + id + '"></td>' +
         '<td><select class="inline-edit-select" id="editCat_' + id + '">' + cats + '</select></td>' +
         '<td class="text-right"><input class="inline-edit-input" type="number" min="0" value="' + item.quantity + '" id="editQty_' + id + '"></td>' +
+        '<td class="text-right"><input class="inline-edit-input" type="number" step="0.01" value="' + (item.tax_included_price || 0) + '" id="editTax_' + id + '" style="width:80px;"></td>' +
         '<td class="text-right"><input class="inline-edit-input" type="number" step="0.01" value="' + (item.cost_price || 0) + '" id="editCost_' + id + '" style="width:80px;"></td>' +
         '<td class="text-right"><input class="inline-edit-input" type="number" step="0.01" value="' + (item.sale_price || 0) + '" id="editSale_' + id + '" style="width:80px;"></td>' +
         '<td><input type="text" value="' + escAttr(item.supplier) + '" placeholder="供应商" style="width:100px;height:32px;padding:0 6px;font-size:13px;" id="editSup_' + id + '"><input type="text" value="' + escAttr(item.supplier_country) + '" placeholder="国家" style="width:70px;height:32px;padding:0 6px;font-size:13px;margin-left:4px;" id="editSupC_' + id + '"></td>' +
@@ -759,6 +764,7 @@ async function saveEdit(id) {
     var supC = document.getElementById('editSupC_' + id).value.trim();
     var pcode = document.getElementById('editCode_' + id).value.trim();
     var cprice = parseFloat(document.getElementById('editCost_' + id).value) || 0;
+    var tprice = parseFloat(document.getElementById('editTax_' + id).value) || 0;
     var sp = parseFloat(document.getElementById('editSale_' + id).value) || 0;
     if (!newName) { showToast('请输入货物名称', 'error'); return; }
     if (isNaN(qty) || qty < 0) { showToast('请输入有效数量', 'error'); return; }
@@ -766,7 +772,7 @@ async function saveEdit(id) {
     var item = data.inventory[id];
     lockUI();
     try {
-        await apiFetch('/inventory?id=eq.' + id, { method: 'PATCH', body: { name: newName, quantity: qty, category: cat, supplier: sup, supplier_country: supC, product_code: pcode, cost_price: cprice, sale_price: sp, updated_at: new Date().toISOString() } });
+        await apiFetch('/inventory?id=eq.' + id, { method: 'PATCH', body: { name: newName, quantity: qty, category: cat, supplier: sup, supplier_country: supC, product_code: pcode, tax_included_price: tprice, cost_price: cprice, sale_price: sp, updated_at: new Date().toISOString() } });
         var diff = qty - item.quantity;
         var editLogId = null;
         if (diff !== 0) {
@@ -781,8 +787,8 @@ async function saveEdit(id) {
                 data.suppliers.push({ name: sup, country: supC });
             }
         }
-        var oldName = item.name, oldQty = item.quantity, oldCat = item.category, oldSup = item.supplier, oldSupC = item.supplier_country, oldCode = item.product_code, oldCost = item.cost_price, oldSale = item.sale_price;
-        data.inventory[id] = { id: id, name: newName, category: cat, quantity: qty, supplier: sup, supplier_country: supC, product_code: pcode, cost_price: cprice, sale_price: sp };
+        var oldName = item.name, oldQty = item.quantity, oldCat = item.category, oldSup = item.supplier, oldSupC = item.supplier_country, oldCode = item.product_code, oldTax = item.tax_included_price, oldCost = item.cost_price, oldSale = item.sale_price;
+        data.inventory[id] = { id: id, name: newName, category: cat, quantity: qty, supplier: sup, supplier_country: supC, product_code: pcode, tax_included_price: tprice, cost_price: cprice, sale_price: sp };
         var sKw = document.getElementById('searchInput').value.toLowerCase();
         var sCat = document.getElementById('filterCategory').value;
         var stillMatch = (!sKw || newName.toLowerCase().indexOf(sKw) !== -1 || pcode.toLowerCase().indexOf(sKw) !== -1) && (!sCat || cat === sCat);
@@ -792,7 +798,7 @@ async function saveEdit(id) {
         renderSuppliers();
         showToast(newName + ' 已更新', 'success');
         pushUndo('编辑 ' + newName, async function() {
-            await apiFetch('/inventory?id=eq.' + id, { method: 'PATCH', body: { name: oldName, quantity: oldQty, category: oldCat, supplier: oldSup, supplier_country: oldSupC, product_code: oldCode, cost_price: oldCost, sale_price: oldSale, updated_at: new Date().toISOString() } });
+            await apiFetch('/inventory?id=eq.' + id, { method: 'PATCH', body: { name: oldName, quantity: oldQty, category: oldCat, supplier: oldSup, supplier_country: oldSupC, product_code: oldCode, tax_included_price: oldTax, cost_price: oldCost, sale_price: oldSale, updated_at: new Date().toISOString() } });
             if (editLogId) { await apiFetch('/operation_logs?id=eq.' + editLogId, { method: 'DELETE' }); }
             await loadFromSupabase();
         });
@@ -812,7 +818,7 @@ async function deleteItem(id) {
         showToast(item.name + ' 已删除', 'success');
         await loadFromSupabase();
         pushUndo('删除 ' + item.name, async function() {
-            await apiFetch('/inventory', { method: 'POST', body: { name: oldItem.name, category: oldItem.category, quantity: oldItem.quantity, supplier: oldItem.supplier, supplier_country: oldItem.supplier_country, product_code: oldItem.product_code, cost_price: oldItem.cost_price, sale_price: oldItem.sale_price }, headers: PREFER_RETURN });
+            await apiFetch('/inventory', { method: 'POST', body: { name: oldItem.name, category: oldItem.category, quantity: oldItem.quantity, supplier: oldItem.supplier, supplier_country: oldItem.supplier_country, product_code: oldItem.product_code, tax_included_price: oldItem.tax_included_price, cost_price: oldItem.cost_price, sale_price: oldItem.sale_price }, headers: PREFER_RETURN });
             await loadFromSupabase();
         });
     } catch (err) { showToast('删除失败：' + err.message, 'error'); }
@@ -857,7 +863,7 @@ function exportData() {
     };
     Object.keys(data.inventory).forEach(function(k) {
         var v = data.inventory[k];
-        exportObj.inventory[k] = { name: v.name, category: v.category, qty: v.quantity, supplier: v.supplier, supplier_country: v.supplier_country, product_code: v.product_code, cost_price: v.cost_price, sale_price: v.sale_price };
+        exportObj.inventory[k] = { name: v.name, category: v.category, qty: v.quantity, supplier: v.supplier, supplier_country: v.supplier_country, product_code: v.product_code, tax_included_price: v.tax_included_price, cost_price: v.cost_price, sale_price: v.sale_price };
     });
     var blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
     var url = URL.createObjectURL(blob);
@@ -881,7 +887,7 @@ async function importData(event) {
             await apiFetch('/customers?id=neq.0', { method: 'DELETE' });
             await apiFetch('/suppliers?id=neq.0', { method: 'DELETE' });
             if (imported.categories.length > 0) { await apiFetch('/categories', { method: 'POST', body: imported.categories.map(function(c) { return { name: typeof c === 'string' ? c : c.name }; }), headers: PREFER_RETURN }); }
-            var invRows = []; Object.keys(imported.inventory).forEach(function(k) { var v = imported.inventory[k]; invRows.push({ name: v.name || k, category: v.category, quantity: v.qty || v.quantity || 0, supplier: v.supplier || '', supplier_country: v.supplier_country || '', product_code: v.product_code || '', cost_price: v.cost_price || 0, sale_price: v.sale_price || 0 }); });
+            var invRows = []; Object.keys(imported.inventory).forEach(function(k) { var v = imported.inventory[k]; invRows.push({ name: v.name || k, category: v.category, quantity: v.qty || v.quantity || 0, supplier: v.supplier || '', supplier_country: v.supplier_country || '', product_code: v.product_code || '', tax_included_price: v.tax_included_price || 0, cost_price: v.cost_price || 0, sale_price: v.sale_price || 0 }); });
             if (invRows.length > 0) { await apiFetch('/inventory', { method: 'POST', body: invRows, headers: PREFER_RETURN }); }
             if (imported.logs && imported.logs.length > 0) { await apiFetch('/operation_logs', { method: 'POST', body: imported.logs.map(function(l) { return { item_name: l.item, category: l.category, quantity_change: parseInt(String(l.change).replace('+','')) || 0, type: l.action === '入库' ? 'inbound' : 'outbound', customer_name: l.customer_name||'', customer_country: l.customer_country||'', supplier_name: l.supplier_name || '', unit_price: l.unit_price || 0, total_price: l.total_price || 0 }; }), headers: PREFER_RETURN }); }
             if (imported.customers && imported.customers.length > 0) { await apiFetch('/customers', { method: 'POST', body: imported.customers, headers: PREFER_RETURN }); }
@@ -913,6 +919,7 @@ function renderOverview() {
             '<td style="font-size:12px;color:var(--text-secondary);">' + escHtml(info.product_code || '-') + '</td>' +
             '<td><span class="badge ' + cls + '">' + escHtml(info.category) + '</span></td>' +
             '<td class="text-right"><strong>' + qty + '</strong></td>' +
+            '<td class="text-right">' + (info.tax_included_price ? '¥' + Number(info.tax_included_price).toFixed(2) : '-') + '</td>' +
             '<td class="text-right">' + (info.cost_price ? '¥' + Number(info.cost_price).toFixed(2) : '-') + '</td>' +
             '<td class="text-right">' + (info.sale_price ? '¥' + Number(info.sale_price).toFixed(2) : '-') + '</td>' +
             '<td>' + escHtml(info.supplier) + (info.supplier_country ? ' (' + escHtml(info.supplier_country) + ')' : '') + '</td>' +
