@@ -67,8 +67,8 @@ body {
 
 .table-wrapper { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
-thead th { text-align: left; padding: 10px 12px; background: #f9fafb; border-bottom: 2px solid var(--border); font-weight: 600; color: var(--text-secondary); font-size: 12px; white-space: nowrap; }
-tbody td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+thead th { text-align: left; padding: 6px 8px; background: #f9fafb; border-bottom: 2px solid var(--border); font-weight: 600; color: var(--text-secondary); font-size: 12px; white-space: nowrap; }
+tbody td { padding: 8px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
 tbody tr:hover { background: #f9fafb; }
 tbody tr.editing { background: #eef2ff; }
 .text-right { text-align: right; } .text-center { text-align: center; }
@@ -99,8 +99,8 @@ tbody tr.editing { background: #eef2ff; }
 @keyframes slideIn { from{transform:translateX(100%);opacity:0;} to{transform:translateX(0);opacity:1;} }
 
 .btn:disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
-.inline-edit-input { height: 32px !important; width: 100px !important; padding: 0 6px !important; font-size: 13px !important; }
-.inline-edit-select { height: 32px !important; width: auto !important; padding: 0 4px !important; font-size: 13px !important; }
+.inline-edit-input { height: 32px !important; padding: 0 6px !important; font-size: 13px !important; }
+.inline-edit-select { height: 32px !important; padding: 0 4px !important; font-size: 12px !important; }
 
 .empty-state { text-align: center; padding: 32px; color: var(--text-secondary); font-size: 13px; }
 
@@ -187,7 +187,7 @@ if (sessionStorage.getItem('_auth') === '1') {
         </div>
         <div class="table-wrapper">
             <table>
-                <thead><tr><th>货物名称</th><th>产品编号</th><th class="text-right">库存数量</th><th class="text-right">折扣价</th><th class="text-right">成本价</th><th class="text-right">售价</th><th>供应商</th><th class="text-center">状态</th><th class="text-center">操作</th></tr></thead>
+                <thead><tr><th>货物名称</th><th>产品编号</th><th>分类</th><th class="text-right">库存数量</th><th class="text-right">折扣价</th><th class="text-right">成本价</th><th class="text-right">售价</th><th>供应商</th><th class="text-center">状态</th><th class="text-center">操作</th></tr></thead>
                 <tbody id="overviewTableBody"></tbody>
             </table>
             <div class="empty-state" id="overviewEmpty" style="display:none">暂无库存数据</div>
@@ -741,14 +741,14 @@ function startEdit(id) {
     row.classList.add('editing');
     var cats = data.categories.map(function(c) { return '<option value="' + escAttr(c) + '"' + (c === item.category ? ' selected' : '') + '>' + escHtml(c) + '</option>'; }).join('');
     row.innerHTML =
-        '<td><input type="text" value="' + escAttr(item.name) + '" placeholder="名称" style="width:100px;height:32px;padding:0 6px;font-size:13px;" id="editName_' + id + '"></td>' +
-        '<td><input type="text" value="' + escAttr(item.product_code || '') + '" placeholder="编号" style="width:80px;height:32px;padding:0 6px;font-size:13px;" id="editCode_' + id + '"></td>' +
-        '<td><select class="inline-edit-select" id="editCat_' + id + '">' + cats + '</select></td>' +
-        '<td class="text-right"><input class="inline-edit-input" type="number" min="0" value="' + item.quantity + '" id="editQty_' + id + '"></td>' +
-        '<td class="text-right"><input class="inline-edit-input" type="number" step="0.01" value="' + (item.discount_price || 0) + '" id="editTax_' + id + '" style="width:80px;"></td>' +
-        '<td class="text-right"><input class="inline-edit-input" type="number" step="0.01" value="' + (item.cost_price || 0) + '" id="editCost_' + id + '" style="width:80px;"></td>' +
-        '<td class="text-right"><input class="inline-edit-input" type="number" step="0.01" value="' + (item.sale_price || 0) + '" id="editSale_' + id + '" style="width:80px;"></td>' +
-        '<td><input type="text" value="' + escAttr(item.supplier) + '" placeholder="供应商" style="width:100px;height:32px;padding:0 6px;font-size:13px;" id="editSup_' + id + '"><input type="text" value="' + escAttr(item.supplier_country) + '" placeholder="国家" style="width:70px;height:32px;padding:0 6px;font-size:13px;margin-left:4px;" id="editSupC_' + id + '"></td>' +
+        '<td><input type="text" value="' + escAttr(item.name) + '" placeholder="名称" style="width:80px;height:32px;padding:0 6px;font-size:13px;" id="editName_' + id + '"></td>' +
+        '<td><input type="text" value="' + escAttr(item.product_code || '') + '" placeholder="编号" style="width:60px;height:32px;padding:0 6px;font-size:13px;" id="editCode_' + id + '"></td>' +
+        '<td><select class="inline-edit-select" style="width:90px;height:32px;padding:0 4px;font-size:12px;" id="editCat_' + id + '">' + cats + '</select></td>' +
+        '<td class="text-right"><input class="inline-edit-input" type="number" min="0" value="' + item.quantity + '" style="width:60px;" id="editQty_' + id + '"></td>' +
+        '<td class="text-right"><input class="inline-edit-input" type="number" step="0.01" value="' + (item.discount_price || 0) + '" style="width:60px;" id="editTax_' + id + '"></td>' +
+        '<td class="text-right"><input class="inline-edit-input" type="number" step="0.01" value="' + (item.cost_price || 0) + '" style="width:60px;" id="editCost_' + id + '"></td>' +
+        '<td class="text-right"><input class="inline-edit-input" type="number" step="0.01" value="' + (item.sale_price || 0) + '" style="width:60px;" id="editSale_' + id + '"></td>' +
+        '<td><input type="text" value="' + escAttr(item.supplier) + '" placeholder="供应商" style="width:70px;height:32px;padding:0 6px;font-size:13px;" id="editSup_' + id + '"><input type="text" value="' + escAttr(item.supplier_country) + '" placeholder="国家" style="width:55px;height:32px;padding:0 6px;font-size:13px;margin-left:4px;" id="editSupC_' + id + '"></td>' +
         '<td class="text-center">-</td>' +
         '<td class="text-center"><button class="btn btn-xs btn-success" onclick="event.stopPropagation();saveEdit(\'' + id + '\')">保存</button> <button class="btn btn-xs btn-outline" onclick="event.stopPropagation();cancelEdit(\'' + id + '\')">取消</button></td>';
 }
