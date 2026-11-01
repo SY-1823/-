@@ -72,6 +72,7 @@ tbody td { padding: 8px 8px; border-bottom: 1px solid var(--border); vertical-al
 tbody tr:hover { background: #f9fafb; }
 tbody tr.editing { background: #eef2ff; }
 .text-right { text-align: right; } .text-center { text-align: center; }
+.col-gap { padding-left: 36px !important; }
 
 .search-bar { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
 .search-bar input { flex: 1; min-width: 160px; height: 38px; padding: 0 10px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; }
@@ -187,7 +188,7 @@ if (sessionStorage.getItem('_auth') === '1') {
         </div>
         <div class="table-wrapper">
             <table>
-                <thead><tr><th>货物名称</th><th>产品编号</th><th>分类</th><th class="text-right">库存数量</th><th class="text-right">折扣价</th><th class="text-right">成本价</th><th class="text-right">售价</th><th>供应商</th><th class="text-center">状态</th><th class="text-center">操作</th></tr></thead>
+                <thead><tr><th>货物名称</th><th>产品编号</th><th class="col-gap">分类</th><th class="text-right col-gap">库存数量</th><th class="text-right col-gap">成本价</th><th class="text-right col-gap">折扣价</th><th class="text-right col-gap">售价</th><th class="col-gap">供应商</th><th class="text-center">状态</th><th class="text-center">操作</th></tr></thead>
                 <tbody id="overviewTableBody"></tbody>
             </table>
             <div class="empty-state" id="overviewEmpty" style="display:none">暂无库存数据</div>
@@ -702,12 +703,12 @@ function renderRow(id) {
     row.outerHTML = '<tr id="row-' + id + '" data-id="' + escAttr(id) + '" style="cursor:pointer" title="点击编辑">' +
         '<td><strong>' + escHtml(info.name) + '</strong></td>' +
         '<td style="font-size:12px;color:var(--text-secondary);">' + escHtml(info.product_code || '-') + '</td>' +
-        '<td><span class="badge ' + cls + '">' + escHtml(info.category) + '</span></td>' +
-        '<td class="text-right"><strong>' + qty + '</strong></td>' +
-        '<td class="text-right">' + (info.discount_price ? '¥' + Number(info.discount_price).toFixed(2) : '-') + '</td>' +
-        '<td class="text-right">' + (info.cost_price ? '¥' + Number(info.cost_price).toFixed(2) : '-') + '</td>' +
-        '<td class="text-right">' + (info.sale_price ? '¥' + Number(info.sale_price).toFixed(2) : '-') + '</td>' +
-        '<td>' + escHtml(info.supplier) + (info.supplier_country ? ' (' + escHtml(info.supplier_country) + ')' : '') + '</td>' +
+        '<td class="col-gap"><span class="badge ' + cls + '">' + escHtml(info.category) + '</span></td>' +
+        '<td class="text-right col-gap"><strong>' + qty + '</strong></td>' +
+        '<td class="text-right col-gap">' + (info.cost_price ? '¥' + Number(info.cost_price).toFixed(2) : '-') + '</td>' +
+        '<td class="text-right col-gap">' + (info.discount_price ? '¥' + Number(info.discount_price).toFixed(2) : '-') + '</td>' +
+        '<td class="text-right col-gap">' + (info.sale_price ? '¥' + Number(info.sale_price).toFixed(2) : '-') + '</td>' +
+        '<td class="col-gap">' + escHtml(info.supplier) + (info.supplier_country ? ' (' + escHtml(info.supplier_country) + ')' : '') + '</td>' +
         '<td class="text-center">' + statusHtml + '</td>' +
         '<td class="text-center"><button class="btn btn-xs btn-outline" data-action="deleteItem" data-id="' + escAttr(id) + '">删</button></td>' +
     '</tr>';
@@ -745,8 +746,8 @@ function startEdit(id) {
         '<td><input type="text" value="' + escAttr(item.product_code || '') + '" placeholder="编号" style="width:60px;height:32px;padding:0 6px;font-size:13px;" id="editCode_' + id + '"></td>' +
         '<td><select class="inline-edit-select" style="width:90px;height:32px;padding:0 4px;font-size:12px;" id="editCat_' + id + '">' + cats + '</select></td>' +
         '<td class="text-right"><input class="inline-edit-input" type="number" min="0" value="' + item.quantity + '" style="width:60px;" id="editQty_' + id + '"></td>' +
-        '<td class="text-right"><input class="inline-edit-input" type="number" step="0.01" value="' + (item.discount_price || 0) + '" style="width:60px;" id="editTax_' + id + '"></td>' +
         '<td class="text-right"><input class="inline-edit-input" type="number" step="0.01" value="' + (item.cost_price || 0) + '" style="width:60px;" id="editCost_' + id + '"></td>' +
+        '<td class="text-right"><input class="inline-edit-input" type="number" step="0.01" value="' + (item.discount_price || 0) + '" style="width:60px;" id="editTax_' + id + '"></td>' +
         '<td class="text-right"><input class="inline-edit-input" type="number" step="0.01" value="' + (item.sale_price || 0) + '" style="width:60px;" id="editSale_' + id + '"></td>' +
         '<td><input type="text" value="' + escAttr(item.supplier) + '" placeholder="供应商" style="width:70px;height:32px;padding:0 6px;font-size:13px;" id="editSup_' + id + '"><input type="text" value="' + escAttr(item.supplier_country) + '" placeholder="国家" style="width:55px;height:32px;padding:0 6px;font-size:13px;margin-left:4px;" id="editSupC_' + id + '"></td>' +
         '<td class="text-center">-</td>' +
@@ -917,12 +918,12 @@ function renderOverview() {
         return '<tr id="row-' + id + '" data-id="' + escAttr(id) + '" style="cursor:pointer" title="点击编辑">' +
             '<td><strong>' + escHtml(name) + '</strong></td>' +
             '<td style="font-size:12px;color:var(--text-secondary);">' + escHtml(info.product_code || '-') + '</td>' +
-            '<td><span class="badge ' + cls + '">' + escHtml(info.category) + '</span></td>' +
-            '<td class="text-right"><strong>' + qty + '</strong></td>' +
-            '<td class="text-right">' + (info.discount_price ? '¥' + Number(info.discount_price).toFixed(2) : '-') + '</td>' +
-            '<td class="text-right">' + (info.cost_price ? '¥' + Number(info.cost_price).toFixed(2) : '-') + '</td>' +
-            '<td class="text-right">' + (info.sale_price ? '¥' + Number(info.sale_price).toFixed(2) : '-') + '</td>' +
-            '<td>' + escHtml(info.supplier) + (info.supplier_country ? ' (' + escHtml(info.supplier_country) + ')' : '') + '</td>' +
+            '<td class="col-gap"><span class="badge ' + cls + '">' + escHtml(info.category) + '</span></td>' +
+            '<td class="text-right col-gap"><strong>' + qty + '</strong></td>' +
+            '<td class="text-right col-gap">' + (info.cost_price ? '¥' + Number(info.cost_price).toFixed(2) : '-') + '</td>' +
+            '<td class="text-right col-gap">' + (info.discount_price ? '¥' + Number(info.discount_price).toFixed(2) : '-') + '</td>' +
+            '<td class="text-right col-gap">' + (info.sale_price ? '¥' + Number(info.sale_price).toFixed(2) : '-') + '</td>' +
+            '<td class="col-gap">' + escHtml(info.supplier) + (info.supplier_country ? ' (' + escHtml(info.supplier_country) + ')' : '') + '</td>' +
             '<td class="text-center">' + statusHtml + '</td>' +
             '<td class="text-center"><button class="btn btn-xs btn-outline" data-action="deleteItem" data-id="' + escAttr(id) + '">删</button></td>' +
         '</tr>';
